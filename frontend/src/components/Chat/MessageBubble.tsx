@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Reply, Trash2, Copy } from 'lucide-react';
+import { Reply, Trash2, Copy, X } from 'lucide-react';
 import type { Message } from '../../types';
 import { chatApi } from '../../services/api';
 import { useChatStore } from '../../store/chatStore';
@@ -9,8 +9,43 @@ interface Props {
   isOwn: boolean;
 }
 
+// Full-screen image lightbox
+function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div style={lb.overlay} onClick={onClose}>
+      <button style={lb.close} onClick={onClose}><X size={24} color="#fff" /></button>
+      <img
+        src={url}
+        alt="preview"
+        style={lb.img}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
+const lb: Record<string, React.CSSProperties> = {
+  overlay: {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 200, cursor: 'zoom-out',
+  },
+  close: {
+    position: 'absolute', top: 16, right: 16,
+    background: 'rgba(255,255,255,0.15)', border: 'none',
+    borderRadius: '50%', width: 40, height: 40,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  img: {
+    maxWidth: '90vw', maxHeight: '90vh',
+    borderRadius: 8, objectFit: 'contain', cursor: 'default',
+  },
+};
+
 export default function MessageBubble({ message, isOwn }: Props) {
   const [hovered, setHovered] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const { setReplyTo, removeMessage } = useChatStore();
   const time = new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -39,9 +74,14 @@ export default function MessageBubble({ message, isOwn }: Props) {
     switch (message.type) {
       case 'IMAGE':
         return (
-          <a href={message.fileUrl} target="_blank" rel="noopener noreferrer">
-            <img src={message.fileUrl} alt={message.fileName ?? 'image'} style={styles.image} />
-          </a>
+          <div style={styles.imageWrap} onClick={() => setLightboxUrl(message.fileUrl ?? null)}>
+            <img
+              src={message.fileUrl}
+              alt={message.fileName ?? 'image'}
+              style={styles.image}
+            />
+            <div style={styles.imageOverlay}>🔍</div>
+          </div>
         );
       case 'VOICE':
         return <audio controls style={styles.audio}><source src={message.fileUrl} /></audio>;
@@ -59,51 +99,55 @@ export default function MessageBubble({ message, isOwn }: Props) {
   };
 
   return (
-    <div
-      style={{ ...styles.wrapper, justifyContent: isOwn ? 'flex-end' : 'flex-start' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {/* Action buttons — shown on hover */}
-      {hovered && (
-        <div style={{ ...styles.actions, order: isOwn ? 0 : 1 }}>
-          <button style={styles.actionBtn} onClick={() => setReplyTo(message)} title="Reply">
-            <Reply size={14} color="#8696a0" />
-          </button>
-          {message.content && (
-            <button style={styles.actionBtn} onClick={handleCopy} title="Copy">
-              <Copy size={14} color="#8696a0" />
-            </button>
-          )}
-          {isOwn && (
-            <button style={styles.actionBtn} onClick={handleDelete} title="Delete">
-              <Trash2 size={14} color="#ef4444" />
-            </button>
-          )}
-        </div>
-      )}
+    <>
+      {lightboxUrl && <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
 
-      <div style={{ ...bubble, order: isOwn ? 1 : 0 }}>
-        {/* Reply preview */}
-        {message.replyToId && (
-          <div style={styles.replyPreview}>
-            <span style={styles.replyName}>{message.replyToSenderName}</span>
-            <span style={styles.replyText}>{message.replyToContent}</span>
+      <div
+        style={{ ...styles.wrapper, justifyContent: isOwn ? 'flex-end' : 'flex-start' }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* Action buttons */}
+        {hovered && (
+          <div style={{ ...styles.actions, order: isOwn ? 0 : 1 }}>
+            <button style={styles.actionBtn} onClick={() => setReplyTo(message)} title="Reply">
+              <Reply size={14} color="#8696a0" />
+            </button>
+            {message.content && (
+              <button style={styles.actionBtn} onClick={handleCopy} title="Copy">
+                <Copy size={14} color="#8696a0" />
+              </button>
+            )}
+            {isOwn && (
+              <button style={styles.actionBtn} onClick={handleDelete} title="Delete">
+                <Trash2 size={14} color="#ef4444" />
+              </button>
+            )}
           </div>
         )}
 
-        {renderContent()}
-
-        <div style={styles.meta}>
-          <span style={styles.time}>{time}</span>
-          {isOwn && (
-            <span style={{ ...styles.tick, color: message.status === 'READ' ? '#53bdeb' : '#8696a0' }}>
-              {message.status === 'SENT' ? '✓' : '✓✓'}
-            </span>
+        <div style={{ ...bubble, order: isOwn ? 1 : 0 }}>
+          {/* Reply preview */}
+          {message.replyToId && (
+            <div style={styles.replyPreview}>
+              <span style={styles.replyName}>{message.replyToSenderName}</span>
+              <span style={styles.replyText}>{message.replyToContent}</span>
+            </div>
           )}
+
+          {renderContent()}
+
+          <div style={styles.meta}>
+            <span style={styles.time}>{time}</span>
+            {isOwn && (
+              <span style={{ ...styles.tick, color: message.status === 'READ' ? '#53bdeb' : '#8696a0' }}>
+                {message.status === 'SENT' ? '✓' : '✓✓'}
+              </span>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -119,7 +163,9 @@ const styles: Record<string, React.CSSProperties> = {
   meta: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 2 },
   time: { color: '#8696a0', fontSize: '0.7rem' },
   tick: { fontSize: '0.75rem' },
+  imageWrap: { position: 'relative', cursor: 'pointer', display: 'inline-block' },
   image: { maxWidth: 240, borderRadius: 8, display: 'block' },
+  imageOverlay: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', opacity: 0, transition: 'all 0.2s', borderRadius: 8 },
   audio: { maxWidth: 240 },
   video: { maxWidth: 240, borderRadius: 8 },
   fileLink: { color: '#53bdeb', fontSize: '0.9rem' },

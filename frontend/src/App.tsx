@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useChatStore } from './store/chatStore';
 import { wsService } from './services/websocket';
+import { userApi } from './services/api';
 import AuthPage from './components/Auth/AuthPage';
 import Sidebar from './components/Sidebar/Sidebar';
 import ChatWindow from './components/Chat/ChatWindow';
@@ -31,6 +32,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { token, currentUser, setAuth, clearAuth } = useChatStore();
+
+  // On page refresh: token exists in localStorage but currentUser is lost.
+  // Re-fetch the user profile so the app works without requiring a new login.
+  useEffect(() => {
+    if (token && !currentUser) {
+      userApi.getMe()
+        .then((user) => setAuth(user, token))
+        .catch(() => clearAuth()); // token expired → force re-login
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
