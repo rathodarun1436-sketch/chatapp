@@ -1,0 +1,20 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #111b21;
+  color: #e9edef;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374045; border-radius: 3px; }
+
+textarea { font-family: inherit; }
+
+button { font-family: inherit; }
+
+input::placeholder, textarea::placeholder { color: #8696a0; }
+
+a { color: inherit; text-decoration: none; }

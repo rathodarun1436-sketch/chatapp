@@ -1,0 +1,61 @@
+services:
+  - type: web
+    name: chat-app-backend
+    env: java
+    rootDir: backend
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -Xmx450m -jar target/chat-app-backend-1.0.0.jar
+    plan: free
+    healthCheckPath: /api/auth/health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_HOST
+        fromDatabase:
+          name: chat-app-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: chat-app-postgres
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: chat-app-postgres
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: chat-app-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: chat-app-postgres
+          property: password
+      - key: REDIS_HOST
+        fromService:
+          name: chat-app-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: chat-app-redis
+          type: redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          name: chat-app-redis
+          type: redis
+          property: password
+      # Set this to your Vercel app URL after deploying frontend
+      - key: CORS_ORIGINS
+        value: https://your-chat-app.vercel.app
+
+  - type: redis
+    name: chat-app-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: chat-app-postgres
+    plan: free
+    databaseName: chatapp
+    user: chatapp_user
